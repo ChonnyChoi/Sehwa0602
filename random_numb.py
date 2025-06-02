@@ -18,9 +18,10 @@ if st.button("맞춰보기!"):
     else:
         st.warning("좀 더 작은 숫자에요! 🔽")
 
-if st.button("다시하기"):
+reset_clicked = st.button("다시하기")
+if reset_clicked:
     st.session_state.target = random.randint(1, 10)
     st.session_state.attempts = 0
-    st.experimental_rerun()  # 페이지 새로고침해서 초기화 적용
-
+    st.experimental_rerun()
+    
 st.write(f"시도 횟수: {st.session_state.attempts}")
