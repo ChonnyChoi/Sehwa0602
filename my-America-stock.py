@@ -28,7 +28,7 @@ for ticker in top_10_companies.keys():
 
 # 데이터프레임 생성
 df = pd.DataFrame(data)
-df.index = df.index.strftime("%Y-%m-%d")  # 날짜 형식 변경
+df.index = df.index.to_series().dt.strftime("%Y-%m-%d")
 
 # Plotly 그래프 생성
 fig = go.Figure()
