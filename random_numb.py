@@ -24,6 +24,6 @@ if st.button("다시하기"):
     # 상태 초기화
     st.session_state.target = random.randint(1, 10)
     st.session_state.attempts = 0
-    st.experimental_rerun()
+    st.rerun()
 
 st.write(f"시도 횟수: {st.session_state.attempts}")
