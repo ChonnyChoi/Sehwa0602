@@ -74,7 +74,7 @@ if st.session_state.선택한_시도 != "선택하세요":
     if 선택한_구군 != "선택하세요" and 선택한_구군 != st.session_state.선택한_구군:
         st.session_state.선택한_구군 = 선택한_구군
 
-# 📌 **두 값이 선택되었을 때만 데이터 불러오기**
+# 📌 **두 값이 선택되었을 때만 지도 로딩**
 if st.session_state.선택한_시도 != "선택하세요" and st.session_state.선택한_구군 != "선택하세요":
     with st.spinner("🔄 데이터를 가져오는 중..."):
         # 🔎 선택 지역 필터링
@@ -87,19 +87,29 @@ if st.session_state.선택한_시도 != "선택하세요" and st.session_state.�
         m = folium.Map(location=[중심_위도, 중심_경도], zoom_start=12)
         marker_cluster = MarkerCluster().add_to(m)
 
-        # 📍 마커 추가
+        # 📍 마커 추가 (주소, 충전기 타입, 시설 데이터 제외)
         for _, row in filtered_df.iterrows():
             folium.Marker(
                 location=[row['위도'], row['경도']],
                 tooltip=row['충전소명'],
-                popup=folium.Popup(f"""
-                    <b>{row['충전소명']}</b><br>
-                    📍 주소: {row['주소']}<br>
-                    ⚡ 충전기 타입: {row['충전기타입']}<br>
-                    🏢 시설: {row['시설구분(대)']} - {row['시설구분(소)']}<br>
-                """, max_width=300),
+                popup="🔄 클릭하면 상세 정보를 불러옵니다!",
                 icon=folium.Icon(color="green", icon="flash")
             ).add_to(marker_cluster)
 
         # 🚀 Streamlit에서 지도 출력
-        st_folium(m, width=900, height=600)
+        clicked_marker = st_folium(m, width=900, height=600)
+
+        # 🔍 사용자가 마커를 클릭하면 상세 정보 로드
+        if clicked_marker and "lat" in clicked_marker and "lng" in clicked_marker:
+            상세정보_df = filtered_df[
+                (filtered_df["위도"] == clicked_marker["lat"]) &
+                (filtered_df["경도"] == clicked_marker["lng"])
+            ]
+
+            if not 상세정보_df.empty:
+                st.markdown(f"""
+                    **충전소명:** {상세정보_df.iloc[0]['충전소명']}  
+                    **📍 주소:** {상세정보_df.iloc[0]['주소']}  
+                    **⚡ 충전기 타입:** {상세정보_df.iloc[0]['충전기타입']}  
+                    **🏢 시설:** {상세정보_df.iloc[0]['시설구분(대)']} - {상세정보_df.iloc[0]['시설구분(소)']}
+                """)
