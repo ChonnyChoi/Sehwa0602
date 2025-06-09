@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import folium
-import subprocess
 from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
 
@@ -48,7 +47,7 @@ def load_combined_data(url1, url2):
 
 # 📍 데이터 로딩 (처음 한 번만 실행)
 if "df" not in st.session_state:
-    st.session_state.df = load_combined_data(url1, url2)  # 시도 & 구군 변경 전까지 유지
+    st.session_state.df = load_combined_data(url1, url2)
 
 df = st.session_state.df
 
@@ -76,40 +75,26 @@ if st.session_state.선택한_시도 != "선택하세요":
 
 # 📌 **두 값이 선택되었을 때만 지도 로딩**
 if st.session_state.선택한_시도 != "선택하세요" and st.session_state.선택한_구군 != "선택하세요":
-    with st.spinner("🔄 데이터를 가져오는 중..."):
-        # 🔎 선택 지역 필터링
-        filtered_df = df[(df['시도'] == st.session_state.선택한_시도) & (df['구군'] == st.session_state.선택한_구군)]
+    # 🔎 선택 지역 필터링
+    filtered_df = df[(df['시도'] == st.session_state.선택한_시도) & (df['구군'] == st.session_state.선택한_구군)]
 
-        # ✅ 지도 중심 좌표 설정
-        중심_위도, 중심_경도 = filtered_df['위도'].mean(), filtered_df['경도'].mean()
+    # ✅ 지도 중심 좌표 설정
+    중심_위도, 중심_경도 = filtered_df['위도'].mean(), filtered_df['경도'].mean()
 
-        # 🗺️ 지도 생성 및 마커 추가
-        m = folium.Map(location=[중심_위도, 중심_경도], zoom_start=12)
-        marker_cluster = MarkerCluster().add_to(m)
+    # 🗺️ 지도 생성 및 마커 추가
+    m = folium.Map(location=[중심_위도, 중심_경도], zoom_start=13)  # 선택 지역만 표시
+    marker_cluster = MarkerCluster().add_to(m)
 
-        # 📍 마커 추가 (주소, 충전기 타입, 시설 데이터 제외)
-        for _, row in filtered_df.iterrows():
-            folium.Marker(
-                location=[row['위도'], row['경도']],
-                tooltip=row['충전소명'],
-                popup="🔄 클릭하면 상세 정보를 불러옵니다!",
-                icon=folium.Icon(color="green", icon="flash")
-            ).add_to(marker_cluster)
+    # 📍 마커 추가 (아이콘 클릭 시 세부 정보 표시)
+    for _, row in filtered_df.iterrows():
+        popup_content = f"""<b>{row['충전소명']}</b>"""
+        marker = folium.Marker(
+            location=[row['위도'], row['경도']],
+            tooltip=row['충전소명'],
+            popup=folium.Popup(popup_content, max_width=300),
+            icon=folium.Icon(color="green", icon="flash")
+        )
+        marker.add_to(marker_cluster)
 
-        # 🚀 Streamlit에서 지도 출력
-        clicked_marker = st_folium(m, width=900, height=600)
-
-        # 🔍 사용자가 마커를 클릭하면 상세 정보 로드
-        if clicked_marker and "lat" in clicked_marker and "lng" in clicked_marker:
-            상세정보_df = filtered_df[
-                (filtered_df["위도"] == clicked_marker["lat"]) &
-                (filtered_df["경도"] == clicked_marker["lng"])
-            ]
-
-            if not 상세정보_df.empty:
-                st.markdown(f"""
-                    **충전소명:** {상세정보_df.iloc[0]['충전소명']}  
-                    **📍 주소:** {상세정보_df.iloc[0]['주소']}  
-                    **⚡ 충전기 타입:** {상세정보_df.iloc[0]['충전기타입']}  
-                    **🏢 시설:** {상세정보_df.iloc[0]['시설구분(대)']} - {상세정보_df.iloc[0]['시설구분(소)']}
-                """)
+    # 🚀 Streamlit에서 지도 출력
+    st_folium(m, width=900, height=600)
