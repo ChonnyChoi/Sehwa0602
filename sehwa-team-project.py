@@ -1,3 +1,12 @@
+import os
+import subprocess
+
+# folium 설치 확인 및 설치
+try:
+    import folium
+except ModuleNotFoundError:
+    subprocess.run(["pip", "install", "folium"])
+    import folium
 import streamlit as st
 import pandas as pd
 import folium
