@@ -68,16 +68,14 @@ if 선택한_시도 and 선택한_구군:
             # 선택된 지역 필터링
             df = df[(df['시도'] == 선택한_시도) & (df['구군'] == 선택한_구군)]
 
-            # 📊 충전소별 그룹핑 및 집계
-            if {'충전기타입', '충전기ID', '충전소명', '주소', '시설구분(대)', '시설구분(소)'}.issubset(df.columns):
+            # 📊 충전소별 그룹핑 및 집계 (⚠️ '충전기ID' 제거)
+            if {'충전기타입', '충전소명', '주소', '시설구분(대)', '시설구분(소)'}.issubset(df.columns):
                 grouped = df.groupby(['위도', '경도', '충전소명', '주소'])
                 summary_df = grouped.agg({
                     '충전기타입': lambda x: ', '.join(sorted(set(x))),
                     '시설구분(대)': 'first',
-                    '시설구분(소)': 'first',
-                    '충전기ID': 'count'
+                    '시설구분(소)': 'first'
                 }).reset_index()
-                summary_df.rename(columns={'충전기ID': '충전기수'}, inplace=True)
             else:
                 st.error("❌ CSV 파일에 필요한 컬럼이 없습니다!")
                 summary_df = pd.DataFrame()
@@ -96,7 +94,6 @@ if 선택한_시도 and 선택한_구군:
                         <b>{row['충전소명']}</b><br>
                         📍 주소: {row['주소']}<br>
                         ⚡ 충전기 타입: {row['충전기타입']}<br>
-                        🔢 충전기 수: {row['충전기수']}대<br>
                         🏢 시설: {row['시설구분(대)']} - {row['시설구분(소)']}<br>
                     """, max_width=300),
                     icon=folium.Icon(color="green", icon="flash")
