@@ -5,19 +5,15 @@ import subprocess
 from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
 
-# Folium 설치 확인 (Streamlit Cloud용)
-try:
-    import folium
-except ModuleNotFoundError:
-    subprocess.run(["pip", "install", "folium"])
-    import folium
-
 # GitHub CSV 데이터 URL
 url1 = "https://raw.githubusercontent.com/ZackWoo05/Sehwa/main/chargerinfo_part1.csv"
 url2 = "https://raw.githubusercontent.com/ZackWoo05/Sehwa/main/chargerinfo_part2.csv"
 
 st.set_page_config(page_title="전기차 충전소 지도", layout="wide")
-st.title("🔌 전국 전기차 충전소 클러스터 지도")
+
+# 🚗⚡ 전기차 주차 이모티콘 배치
+st.markdown("<h1 style='text-align: center;'>🔌🚗 전기차 주차장</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center;'>⚡ 친환경 전기차 충전소를 찾아보세요!</p>", unsafe_allow_html=True)
 
 @st.cache_data(ttl=600)  # 처음 로딩 후 10분 동안 데이터 유지
 def load_combined_data(url1, url2):
@@ -50,19 +46,15 @@ def load_combined_data(url1, url2):
 
     return df
 
-# 📍 초기 지도 설정 (대한민국 전체)
-m = folium.Map(location=[36.5, 127.5], zoom_start=7)  # 대한민국 중심 좌표
-st_folium(m, width=900, height=600)
-
-# ✅ 시도 & 구군 선택 UI 추가
+# 📍 시도 & 구군 선택 UI 추가
 df = load_combined_data(url1, url2)  # 데이터 미리 로드 (나중에 선택 후 활용)
 
 시도_목록 = sorted(df['시도'].dropna().unique()) if not df.empty else []
-선택한_시도 = st.selectbox("시/도 선택", ["선택하세요"] + 시도_목록)
+선택한_시도 = st.selectbox("🔍 시/도 선택", ["선택하세요"] + 시도_목록)
 
 if 선택한_시도 != "선택하세요":
     구군_목록 = sorted(df[df['시도'] == 선택한_시도]['구군'].dropna().unique()) if not df.empty else []
-    선택한_구군 = st.selectbox("구/군 선택", ["선택하세요"] + 구군_목록)
+    선택한_구군 = st.selectbox("🔍 구/군 선택", ["선택하세요"] + 구군_목록)
 
     if 선택한_구군 != "선택하세요":
         # 🔎 선택 지역 필터링
