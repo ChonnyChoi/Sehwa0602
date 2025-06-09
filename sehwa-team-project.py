@@ -19,17 +19,14 @@ url2 = "https://raw.githubusercontent.com/ZackWoo05/Sehwa/main/chargerinfo_part2
 st.set_page_config(page_title="전기차 충전소 지도", layout="wide")
 st.title("🔌 전국 전기차 충전소 클러스터 지도")
 
-@st.cache_data
+@st.cache_data(ttl=600)  # 데이터를 캐시하여 10분 동안 유지 (중복 실행 방지)
 def load_combined_data(url1, url2):
-    """ CSV 데이터 로드 및 전처리 """
+    """ CSV 데이터 로드 및 전처리 (처음 한 번만 실행) """
     df1 = pd.read_csv(url1, encoding="utf-8", low_memory=False)
     df2 = pd.read_csv(url2, encoding="utf-8", low_memory=False)
     df = pd.concat([df1, df2], ignore_index=True)
 
     df.columns = df.columns.str.strip().str.lower()  # 컬럼 정리 (공백 제거 + 소문자 변환)
-
-    # CSV 컬럼 목록 확인
-    st.write("🔍 현재 CSV 컬럼 목록:", df.columns.tolist())
 
     # '위도경도' 컬럼 존재 여부 확인
     if '위도경도' in df.columns:
@@ -56,7 +53,7 @@ def load_combined_data(url1, url2):
 
     return df
 
-# 📍 데이터 로딩
+# 📍 데이터 로딩 (처음 한 번만 실행)
 df = load_combined_data(url1, url2)
 
 if not df.empty:
