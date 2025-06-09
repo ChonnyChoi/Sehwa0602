@@ -57,20 +57,31 @@ def load_combined_data(url1, url2):
 
     return df
 
-# 📍 기본값 설정
-st.markdown("### 📍 지역을 먼저 선택해주세요")
+# 📍 데이터 로딩
 df = load_combined_data(url1, url2)
+
 if not df.empty:
-    시도_목록 = sorted(df['시도'].dropna().unique())  # 모든 시/도 표시
+    # 모든 시/도 목록 가져오기
+    시도_목록 = sorted(df['시도'].dropna().unique())
     선택한_시도 = st.selectbox("시/도 선택", 시도_목록)
-    구군_목록 = sorted(df[df['시도'] == 선택한_시도]['구군'].dropna().unique())  # 선택한 시/도의 구군 표시
+
+    # 선택한 시도의 구/군 목록 가져오기
+    구군_목록 = sorted(df[df['시도'] == 선택한_시도]['구군'].dropna().unique())
     선택한_구군 = st.selectbox("구/군 선택", 구군_목록)
+
+    # 선택한 지역의 평균 좌표 계산 (지도 중심 변경)
+    지역_데이터 = df[df['시도'] == 선택한_시도]
+    if not 지역_데이터.empty:
+        중심_위도 = 지역_데이터['위도'].mean()
+        중심_경도 = 지역_데이터['경도'].mean()
+    else:
+        중심_위도, 중심_경도 = 37.5009, 126.9872  # 기본값 (서울 세화고등학교)
 
     # 데이터 로딩 (선택 지역 필터링)
     with st.spinner("🚗 충전소 데이터를 불러오는 중입니다..."):
         df = df[(df['시도'] == 선택한_시도) & (df['구군'] == 선택한_구군)]
 
-        # 📊 충전소별 그룹핑 및 집계 (⚠️ '충전기ID' 제거)
+        # 📊 충전소별 그룹핑 및 집계
         if {'충전기타입', '충전소명', '주소', '시설구분(대)', '시설구분(소)'}.issubset(df.columns):
             grouped = df.groupby(['위도', '경도', '충전소명', '주소'])
             summary_df = grouped.agg({
@@ -83,8 +94,7 @@ if not df.empty:
             summary_df = pd.DataFrame()
 
         # 🗺️ 지도 생성 및 마커 추가
-        map_center = [37.5009, 126.9872]  # 서울 세화고등학교 기준
-        m = folium.Map(location=map_center, zoom_start=13)
+        m = folium.Map(location=[중심_위도, 중심_경도], zoom_start=12)  # 선택한 도시로 지도 중심 이동
         marker_cluster = MarkerCluster().add_to(m)
 
         # 📍 마커 추가
