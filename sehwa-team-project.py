@@ -22,9 +22,15 @@ st.title("🔌 전국 전기차 충전소 클러스터 지도")
 @st.cache_data
 def load_combined_data(url1, url2):
     """ CSV 데이터 로드 및 전처리 """
-    df1 = pd.read_csv(url1, low_memory=False)
-    df2 = pd.read_csv(url2, low_memory=False)
+    df1 = pd.read_csv(url1, encoding="utf-8", low_memory=False)
+    df2 = pd.read_csv(url2, encoding="utf-8", low_memory=False)
     df = pd.concat([df1, df2], ignore_index=True)
+
+    df.columns = df.columns.str.strip().str.lower()  # 컬럼 정리 (공백 제거 + 소문자 변환)
+
+    # CSV 컬럼 목록 확인
+    st.write("🔍 현재 CSV 컬럼 목록:", df.columns.tolist())
+    st.write("📊 CSV 데이터 미리보기:", df.head())
 
     # '위도경도' 컬럼 존재 여부 확인
     if '위도경도' in df.columns:
@@ -52,52 +58,48 @@ def load_combined_data(url1, url2):
     return df
 
 # 📍 기본값 설정
-기본_시도 = "서울특별시"
-기본_구군 = "서초구"
-
 st.markdown("### 📍 지역을 먼저 선택해주세요")
-선택한_시도 = st.selectbox("시/도 선택", [기본_시도])
-선택한_구군 = st.selectbox("구/군 선택", [기본_구군])
+df = load_combined_data(url1, url2)
+if not df.empty:
+    시도_목록 = sorted(df['시도'].dropna().unique())  # 모든 시/도 표시
+    선택한_시도 = st.selectbox("시/도 선택", 시도_목록)
+    구군_목록 = sorted(df[df['시도'] == 선택한_시도]['구군'].dropna().unique())  # 선택한 시/도의 구군 표시
+    선택한_구군 = st.selectbox("구/군 선택", 구군_목록)
 
-# 데이터 로딩 (선택 지역 필터링)
-if 선택한_시도 and 선택한_구군:
+    # 데이터 로딩 (선택 지역 필터링)
     with st.spinner("🚗 충전소 데이터를 불러오는 중입니다..."):
-        df = load_combined_data(url1, url2)
+        df = df[(df['시도'] == 선택한_시도) & (df['구군'] == 선택한_구군)]
 
-        if not df.empty:
-            # 선택된 지역 필터링
-            df = df[(df['시도'] == 선택한_시도) & (df['구군'] == 선택한_구군)]
+        # 📊 충전소별 그룹핑 및 집계 (⚠️ '충전기ID' 제거)
+        if {'충전기타입', '충전소명', '주소', '시설구분(대)', '시설구분(소)'}.issubset(df.columns):
+            grouped = df.groupby(['위도', '경도', '충전소명', '주소'])
+            summary_df = grouped.agg({
+                '충전기타입': lambda x: ', '.join(sorted(set(x))),
+                '시설구분(대)': 'first',
+                '시설구분(소)': 'first'
+            }).reset_index()
+        else:
+            st.error("❌ CSV 파일에 필요한 컬럼이 없습니다!")
+            summary_df = pd.DataFrame()
 
-            # 📊 충전소별 그룹핑 및 집계 (⚠️ '충전기ID' 제거)
-            if {'충전기타입', '충전소명', '주소', '시설구분(대)', '시설구분(소)'}.issubset(df.columns):
-                grouped = df.groupby(['위도', '경도', '충전소명', '주소'])
-                summary_df = grouped.agg({
-                    '충전기타입': lambda x: ', '.join(sorted(set(x))),
-                    '시설구분(대)': 'first',
-                    '시설구분(소)': 'first'
-                }).reset_index()
-            else:
-                st.error("❌ CSV 파일에 필요한 컬럼이 없습니다!")
-                summary_df = pd.DataFrame()
+        # 🗺️ 지도 생성 및 마커 추가
+        map_center = [37.5009, 126.9872]  # 서울 세화고등학교 기준
+        m = folium.Map(location=map_center, zoom_start=13)
+        marker_cluster = MarkerCluster().add_to(m)
 
-            # 🗺️ 지도 생성 및 마커 추가
-            map_center = [37.5009, 126.9872]  # 서울 세화고등학교 기준
-            m = folium.Map(location=map_center, zoom_start=13)
-            marker_cluster = MarkerCluster().add_to(m)
+        # 📍 마커 추가
+        for _, row in summary_df.iterrows():
+            folium.Marker(
+                location=[row['위도'], row['경도']],
+                tooltip=row['충전소명'],
+                popup=folium.Popup(f"""
+                    <b>{row['충전소명']}</b><br>
+                    📍 주소: {row['주소']}<br>
+                    ⚡ 충전기 타입: {row['충전기타입']}<br>
+                    🏢 시설: {row['시설구분(대)']} - {row['시설구분(소)']}<br>
+                """, max_width=300),
+                icon=folium.Icon(color="green", icon="flash")
+            ).add_to(marker_cluster)
 
-            # 📍 마커 추가
-            for _, row in summary_df.iterrows():
-                folium.Marker(
-                    location=[row['위도'], row['경도']],
-                    tooltip=row['충전소명'],
-                    popup=folium.Popup(f"""
-                        <b>{row['충전소명']}</b><br>
-                        📍 주소: {row['주소']}<br>
-                        ⚡ 충전기 타입: {row['충전기타입']}<br>
-                        🏢 시설: {row['시설구분(대)']} - {row['시설구분(소)']}<br>
-                    """, max_width=300),
-                    icon=folium.Icon(color="green", icon="flash")
-                ).add_to(marker_cluster)
-
-            # 🚀 Streamlit에서 지도 출력
-            st_folium(m, width=900, height=600)
+        # 🚀 Streamlit에서 지도 출력
+        st_folium(m, width=900, height=600)
